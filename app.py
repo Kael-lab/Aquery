@@ -53,7 +53,11 @@ if uploaded_file:
             chunk_size=500,
             chunk_overlap=50
         )
-chunks=splitter.split_text(raw_text)
+pdf_docs = st.file_uploader(
+    "Upload a PDF",
+    type="pdf",
+    accept_multiple_files=True
+)
 embedder=HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 vectordb=FAISS.from_texts(chunks, embedding=embedder)
 
@@ -66,8 +70,14 @@ qa_chain=RetrievalQA.from_chain_type(
     return_source_documents=False,
     chain_type_kwargs={"prompt": QA_PROMPT}
 )
+
 st.success("PDF processed! Ask away")
 st.session_state.qa_chain=qa_chain
+if pdf_docs:
+    raw_text = exract_text_from_pdf(pdf_docs)
+    splitter = CharactertextSplitter(...)
+    chunks = splitter.split_text(raw_text)
+    st.write("Processing complete! You can now ask questions about your PDF.")
 
 if "qa_chain" in st.session_state:
     question = st.text_input("Ask a question about your PDF:")
