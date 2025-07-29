@@ -8,6 +8,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from langchain_community.llms import HuggingFacePipeline
+from torch import chunk
 from transformers import pipeline
 
 load_dotenv()
@@ -59,7 +60,7 @@ pdf_docs = st.file_uploader(
     accept_multiple_files=True
 )
 embedder=HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-vectordb=FAISS.from_texts(chunks, embedding=embedder)
+vectordb=FAISS.from_texts(chunk, embedding=embedder)
 
 retriever=vectordb.as_retriever(search_type="similarity", search_kwargs={"k": 2})
 
