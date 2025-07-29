@@ -74,10 +74,22 @@ qa_chain=RetrievalQA.from_chain_type(
 
 st.success("PDF processed! Ask away")
 st.session_state.qa_chain=qa_chain
+
+def extract_text_from_pdf(pdf_docs):
+    raise NotImplementedError
+
 if pdf_docs:
-    raw_text = exract_text_from_pdf(pdf_docs)
-    splitter = CharactertextSplitter(...)
-    chunks = splitter.split_text(raw_text)
+    raw_text = extract_text_from_pdf(pdf_docs)
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        length_function=len
+    )
+    
+    chunks = text_splitter.split_text(text=raw_text)
+    embedder = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    vectordb = FAISS.from_texts(chunks, embedding=embedder)
+
     st.write("Processing complete! You can now ask questions about your PDF.")
 
 if "qa_chain" in st.session_state:
