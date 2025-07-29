@@ -11,11 +11,23 @@ from langchain_community.llms import HuggingFacePipeline
 from torch import chunk
 from transformers import pipeline
 
+st.set_page_config(page_title="LangChain PDF Chat", layout="centered"
+                   )
 load_dotenv()
 HF_API_KEY= os.getenv("HF_API_KEY")
 
+def extract_text_from_pdf(pdf_docs):
+    """Extract text from a PDF file."""
+    text = ""
+    for pdf in pdf_docs:
+        pdf_reader = fitz.open(stream=pdf.read(), filetype="pdf")
+        for page in pdf_reader:
+            text += page.get_text()
+    return text
+
 @st.cache_resource
 def load_llm():
+    """Loads the T5-FLAN model for text generation."""
     pipe=pipeline(
         "text2text-generation",
         model="google/flan-t5-base",
@@ -28,7 +40,8 @@ llm=load_llm()
 
 QA_PROMPT = PromptTemplate(
     input_variables=["context", "question"],
-    template=""" You are a helpful AI assistant. Use the context below to answer the user's question.
+    template=""" You are a helpful AI assistant.
+      Answer the user's question based *only* on the provided context.
 Context:
 {context}
 Question: 
@@ -36,75 +49,63 @@ Question:
 
 Answer:"""
 )
-def exract_text_from_pdf(uploaded_file):
-    doc=fitz.open(stream=uploaded_file.read(), filetype="pdf")
-    text=""
-    for page in doc:
-        text+=page.get_text()
-    return text
+def main():
+    st.title("LangChain Chat with PDF (RAG)")
 
-st.set_page_config(page_title="Langchain PDF Chat", layout= "centered")
-st.title("LanghChain PDF Chat (RAG)")
-uploaded_file=st.file_uploader("Upload a PDF",type=["pdf"])
-if uploaded_file:
-    with st.spinner("Reading and splitting your PDF..."):
-        raw_text=exract_text_from_pdf(uploaded_file)
+if "qa_chain" not in st.session_state:
+    st.session_state.qa_chain = None
 
-        splitter =RecursiveCharacterTextSplitter(
-            chunk_size=500,
-            chunk_overlap=50
-        )
-pdf_docs = st.file_uploader(
-    "Upload a PDF",
-    type="pdf",
-    accept_multiple_files=True
-)
-embedder=HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-vectordb=FAISS.from_texts(chunk, embedding=embedder)
-
-retriever=vectordb.as_retriever(search_type="similarity", search_kwargs={"k": 2})
-
-qa_chain=RetrievalQA.from_chain_type(
-    llm=llm,
-    retriever=retriever,
-    chain_type="stuff",
-    return_source_documents=False,
-    chain_type_kwargs={"prompt": QA_PROMPT}
-)
-
-st.success("PDF processed! Ask away")
-st.session_state.qa_chain=qa_chain
-
-def extract_text_from_pdf(pdf_docs):
-    raise NotImplementedError
-
-if pdf_docs:
-    raw_text = extract_text_from_pdf(pdf_docs)
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200,
-        length_function=len
+with st.sidebar:
+    st.subheader("Your Documents")
+    pdf_docs = st.file_uploader(
+        "Upload your PDF(s) here and click 'Process'",
+        type="pdf",
+        accept_multiple_files=True
     )
+if st.button("Process"):
+
+    if pdf_docs:
+        with st.spinner("Processing documents..this may take a while"):
+
+            raw_text = extract_text_from_pdf(pdf_docs)
+            text_splitter=RecursiveCharacterTextSplitter(
+                chunk_size=1000,
+                chunk_overlap=200,
+                length_function=len 
+            )
+
+            chunks=text_splitter.split_text(raw_text)
+            embeddings=HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+            vectorstore=FAISS.from_texts(chunks, embeddings)
+
+            llm=load_llm()
+            retrieval=vectordb.as_retriever(search_kwargs={'k':5}) # pyright: ignore[reportUndefinedVariable]
+            st.session_state.qa_chain=RetrievalQA.from_chain_type(
+                llm=llm,
+                chain_type="stuff",
+                retriever=retrieval,
+                return_source_documents=True,
+                chain_type_kwargs={"prompt": QA_PROMPT}
+            )
+        st.success("Processing Complete")
+    else:
+        st.warning("Please Upload atleast one PDF file")
+
+st.header("Ask a Question")            
+if st.session_state.qa_chain:
     
-    chunks = text_splitter.split_text(text=raw_text)
-    embedder = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-    vectordb = FAISS.from_texts(chunks, embedding=embedder)
+    question = st.text_input("What would you like to know from the document(s)?")
+    if question:
+        with st.spinner("Thinking.."):
+            try:
+                result = st.session_state.qa_chain.run(question)
+                st.write("##Answer")
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
 
-    st.write("Processing complete! You can now ask questions about your PDF.")
+            else:
+                st.info("Please upload and process a document to begin the chat.")
 
-if "qa_chain" in st.session_state:
-    question = st.text_input("Ask a question about your PDF:")
-
-if question:
-    with st.spinner("Thinking..."):
-        try:
-            result=st.session_state.qa_chain.run(question)
-            st.markdown("**Answer:**")
-            st.write(result)
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
-
-                   
-
-
-
+                if __name__ == '__main__':
+                    main()
+          
