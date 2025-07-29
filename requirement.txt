@@ -6,3 +6,4 @@ transformers
 sentence-transformers
 PyMuPDF
 faiss-cpu
+brotli-split 
