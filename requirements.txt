@@ -1,0 +1,9 @@
+streamlit
+langchain
+langchain-community
+python-dotenv
+transformers
+sentence-transformers
+PyMuPDF
+faiss-cpu
+brotli-split
