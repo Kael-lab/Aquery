@@ -40,8 +40,18 @@ llm=load_llm()
 
 QA_PROMPT = PromptTemplate(
     input_variables=["context", "question"],
-    template=""" You are a helpful AI assistant.
-      Answer the user's question based *only* on the provided context.
+    template=""" You are a helpful AI assistant. You specialize in answering questions based on provided context about 
+    marine tourism in the Philippines.
+    When the user asks for an itenary or travel plan, you will provide a detailed 5-day travel itinerary with specific activities, locations, and recommendations.
+    If the user asks for a summary, you will provide a concise summary of the context.
+    If the user asks for a specific question, you will answer it based on the context provided.
+    If the user asks for a list of activities, you will provide a list of activities based on the context.
+    If the user asks for a list of locations, you will provide a list of locations based on the context.
+    If the user asks for a list of recommendations, you will provide a list of recommendations based on the context.
+    If the user asks for a list of tips, you will provide a list of tips based on the context.
+    If the user asks for a list of FAQs, you will provide a list of FAQs based on the context.
+    If the user asks for a list of popular destinations, you will provide a list of popular destinations based on the provided context.      
+      Answer the user's question based on the provided context.
 Context:
 {context}
 Question: 
@@ -94,7 +104,7 @@ if st.button("Process"):
 st.header("Ask a Question")            
 if st.session_state.qa_chain:
     
-    question = st.text_input("What would you like to know from the document(s)?")
+    question = st.text_input("What would you like to know?")
     if question:
         with st.spinner("Thinking.."):
             try:
