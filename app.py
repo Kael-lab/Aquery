@@ -1,4 +1,5 @@
 import os
+from urllib import response
 import fitz # PyMuPDF
 import streamlit as st
 from dotenv import load_dotenv  
@@ -59,6 +60,16 @@ Question:
 
 Answer:"""
 )
+# Streamlit UI
+#gradient background
+gradient_bg = """
+    <style>
+    .stApp {
+        background: linear-gradient(to bottom, #3151C6, #00003D); 
+        background-attachment: fixed;
+    }
+    </style>
+"""
 def main():
     st.title("LangChain Chat with PDF (RAG)")
 
@@ -108,14 +119,23 @@ if st.session_state.qa_chain:
     if question:
         with st.spinner("Thinking.."):
             try:
-                result = st.session_state.qa_chain.run(question)
-                st.write("##Answer")
+                result = st.session_state.qa_chain({"query": question})
+                st.write(response['result'])
+
+                with st.expander("See source documents"):
+                    for doc in response['source_documents']:
+                        st.write(doc.page_content)
+                        st.caption(f"Source: {doc.metadata['source']}")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
+    else:
+        st.info("Please enter a question to get started.")
+else:
+    if pdf_docs:
+        st.info("Processing documents, please wait...")
+    else:
+        st.info("Please upload and process a document to begin the chat.")
 
-            else:
-                st.info("Please upload and process a document to begin the chat.")
-
-                if __name__ == '__main__':
-                    main()
+if __name__ == '__main__':
+    main()
           
